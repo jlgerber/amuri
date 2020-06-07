@@ -14,5 +14,6 @@
 //!
 //! valid name, dept, subcontext, type:
 //! char (a-z|0-9_)+
+pub mod level;
 pub mod parse;
 pub mod scheme;
