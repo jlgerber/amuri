@@ -49,36 +49,74 @@ pub fn valid_body0_parser(input: &str) -> IResult<&str, &str> {
 mod tests {
     use super::*;
     use nom::Err::Error;
-    #[test]
-    fn test_is_underscore() {
-        assert!(is_underscore(b'_'));
-        assert_eq!(is_underscore(b'a'), false);
-    }
+    mod is_underscore {
+        use super::*;
 
-    #[test]
-    fn test_is_valid_body_char() {
-        let valid = [b'a', b'b', b'c', b'0', b'9', b'_'];
-        for test in &valid {
-            assert!(is_valid_body_char(*test));
+        #[test]
+        fn can_parse_undercore() {
+            assert!(is_underscore(b'_'));
         }
-        let invalid = [b'-', b'$', b'!', b' ', b',', b'.', b'/', b'?', b'\\', b'|'];
-        for test in &invalid {
-            assert_eq!(is_valid_body_char(*test), false);
+        #[test]
+        fn will_reject_non_underscore() {
+            assert_eq!(is_underscore(b'a'), false);
         }
     }
 
-    #[test]
-    fn test_valid_body1_parser() {
-        assert_eq!(valid_body1_parser("abc_123-"), Ok(("-", "abc_123")));
-        assert_eq!(
-            valid_body1_parser("-abc_123-"),
-            Err(Error(("-abc_123-", nom::error::ErrorKind::Alpha)))
-        );
+    mod is_valid_body_char {
+        use super::*;
+
+        #[test]
+        fn can_parse_valid_chars_ie_letters_numbers_underscore() {
+            let valid = [b'a', b'b', b'c', b'0', b'9', b'_'];
+            for test in &valid {
+                assert!(is_valid_body_char(*test));
+            }
+        }
+        #[test]
+        fn rejects_invalid_chars() {
+            let invalid = [b'-', b'$', b'!', b' ', b',', b'.', b'/', b'?', b'\\', b'|'];
+            for test in &invalid {
+                assert_eq!(is_valid_body_char(*test), false);
+            }
+        }
     }
 
-    #[test]
-    fn test_valid_body0_parser() {
-        assert_eq!(valid_body0_parser("abc_123-"), Ok(("-", "abc_123")));
-        assert_eq!(valid_body0_parser("-abc_123-"), Ok(("-abc_123-", "")));
+    mod valid_body1_parser {
+        use super::*;
+
+        #[test]
+        fn can_parse_valid_body1_data() {
+            assert_eq!(valid_body1_parser("abc_123-"), Ok(("-", "abc_123")));
+        }
+        #[test]
+        fn will_fail_when_starting_with_invalid_char() {
+            assert_eq!(
+                valid_body1_parser("-abc_123-"),
+                Err(Error(("-abc_123-", nom::error::ErrorKind::Alpha)))
+            );
+        }
+        #[test]
+        fn will_fail_if_presented_with_empty_string() {
+            assert_eq!(
+                valid_body1_parser(""),
+                Err(Error(("", nom::error::ErrorKind::Alpha)))
+            );
+        }
+    }
+    mod valid_body0_parser {
+        use super::*;
+
+        #[test]
+        fn can_parse_str_with_valid_chars() {
+            assert_eq!(valid_body0_parser("abc_123-"), Ok(("-", "abc_123")));
+        }
+        #[test]
+        fn will_make_no_progress_on_str_starting_with_invalid_char() {
+            assert_eq!(valid_body0_parser("-abc_123-"), Ok(("-abc_123-", "")));
+        }
+        #[test]
+        fn can_handle_empty_str() {
+            assert_eq!(valid_body0_parser(""), Ok(("", "")));
+        }
     }
 }
