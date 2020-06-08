@@ -1,7 +1,7 @@
 use crate::parse::resource::parse_resource;
 use nom::bytes::complete::tag;
-use nom::sequence::{preceded, separated_pair};
-use nom::{character, error::ErrorKind, IResult};
+use nom::sequence::preceded;
+use nom::IResult;
 
 /// parse hashtag from str, which should generally take the form
 /// ```#key```
@@ -25,6 +25,10 @@ mod tests {
             parse_hashtag("#1main"),
             Err(Error(("1main", ErrorKind::Alpha)))
         );
+    }
+    #[test]
+    fn can_end_with_number() {
+        assert_eq!(parse_hashtag("#main1"), Ok(("", "main1")));
     }
     #[test]
     fn cannot_parse_a_symbol() {
