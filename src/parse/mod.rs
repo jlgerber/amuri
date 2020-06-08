@@ -5,5 +5,7 @@ pub mod level;
 pub mod query;
 pub mod resource;
 pub mod scheme;
+pub mod snapshot_type;
 pub mod subcontext;
+pub mod uri;
 pub mod utils;
