@@ -34,7 +34,8 @@ pub fn parse_instance_name(input: &str) -> IResult<&str, &str> {
     terminated(parse_instance_name_, tag("/"))(input)
 }
 
-fn parse_name_(input: &str) -> IResult<&str, &str> {
+/// parse name not ending in a slash
+pub(crate) fn parse_name_noslash(input: &str) -> IResult<&str, &str> {
     let (i, r1) = character::complete::alpha1(input)?;
     let (i, r2) = verify(valid_body0_parser, |s: &str| {
         !is_underscore(s.chars().last().unwrap_or('1') as u8)
@@ -45,7 +46,7 @@ fn parse_name_(input: &str) -> IResult<&str, &str> {
 /// A less retrictive parser that doesnt care whether the last character is a
 /// number or a letter.
 pub fn parse_name(input: &str) -> IResult<&str, &str> {
-    terminated(parse_name_, tag("/"))(input)
+    terminated(parse_name_noslash, tag("/"))(input)
 }
 
 #[cfg(test)]
