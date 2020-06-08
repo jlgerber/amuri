@@ -1,69 +1,119 @@
 use crate::errors::AmuriError;
-use crate::level::OwnedLevel;
+use crate::level::{Level, OwnedLevel};
 use crate::scheme::Scheme;
+use crate::version::Version;
+use std::str::FromStr;
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Version {
-    Current,
-    Latest,
-    Number(u16),
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct AssetModel<'a> {
+    container_type: Scheme,
+    level: Level<'a>,
+    name: &'a str,
+    department: &'a str,
+    subcontext: &'a str,
+    snapshot_type: &'a str,
+    version: Option<Version>,
+    /// The particular filetype we are interested in
+    key: Option<&'a str>,
 }
 
-impl Version {
-    /// Generate Version from str
-    pub fn from_str(input: &str) -> Result<Self, AmuriError> {
-        match input {
-            "current" => Ok(Self::Current),
-            "latest" => Ok(Self::Latest),
-            _ => {
-                let num: u16 = input.parse().map_err(|_x| AmuriError::StrToIntError {
-                    target: input.into(),
-                })?;
-                Ok(Self::Number(num))
-            }
+impl<'a> AssetModel<'a> {
+    pub fn new(
+        container_type: Scheme,
+        level: Level<'a>,
+        name: &'a str,
+        department: &'a str,
+        subcontext: &'a str,
+        snapshot_type: &'a str,
+        version: Option<Version>,
+        key: Option<&'a str>,
+    ) -> Self {
+        Self {
+            container_type,
+            level,
+            name,
+            department,
+            subcontext,
+            snapshot_type,
+            version,
+            /// The particular filetype we are interested in
+            key,
         }
+    }
+
+    pub fn from_strs(
+        container_type: &'a str,
+        level: &'a str,
+        name: &'a str,
+        department: &'a str,
+        subcontext: &'a str,
+        snapshot_type: &'a str,
+        version: Option<&'a str>,
+        key: Option<&'a str>,
+    ) -> std::result::Result<AssetModel<'a>, AmuriError> {
+        let container_type = Scheme::from_str(container_type)?;
+        let level = Level::from_str(level)?;
+        let version = if version.is_some() {
+            Some(Version::from_str(version.unwrap())?)
+        } else {
+            None
+        };
+        Ok(AssetModel::new(
+            container_type,
+            level,
+            name,
+            department,
+            subcontext,
+            snapshot_type,
+            version,
+            key,
+        ))
     }
 }
 /// Represents the query
-#[derive(Debug, PartialEq, Eq)]
-pub struct AssetModel {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct OwnedAssetModel {
     container_type: Scheme,
     level: OwnedLevel,
+    name: String,
     department: String,
     subcontext: String,
     snapshot_type: String,
-    version: Version,
+    version: Option<Version>,
     /// The particular filetype we are interested in
     key: Option<String>,
+}
+
+impl<'a> From<AssetModel<'a>> for OwnedAssetModel {
+    fn from(input: AssetModel<'a>) -> Self {
+        Self {
+            container_type: input.container_type.clone(),
+            level: input.level.into(),
+            name: input.name.into(),
+            department: input.department.into(),
+            subcontext: input.subcontext.into(),
+            snapshot_type: input.snapshot_type.into(),
+            version: input.version.clone(),
+            key: input.key.map(str::to_string),
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    mod version {
-        use super::*;
-        #[test]
-        fn can_generate_version_from_str_current() {
-            assert_eq!(Version::from_str("current"), Ok(Version::Current));
-        }
-
-        #[test]
-        fn can_generate_version_from_str_latest() {
-            assert_eq!(Version::from_str("latest"), Ok(Version::Latest));
-        }
-
-        #[test]
-        fn can_generate_version_from_str_number() {
-            assert_eq!(Version::from_str("0001"), Ok(Version::Number(1)));
-        }
-        #[test]
-        fn will_return_error_if_given_non_numeric_str() {
-            assert_eq!(
-                Version::from_str("fred"),
-                Err(AmuriError::StrToIntError {
-                    target: "fred".into()
-                })
-            );
-        }
+    #[test]
+    fn can_create_from_strs() {
+        let am = AssetModel::from_strs(
+            "asset",
+            "dev01",
+            "bob",
+            "model",
+            "hi",
+            "alembic_model",
+            Some("current"),
+            Some("main"),
+        );
+        assert!(am.is_ok());
     }
 }
