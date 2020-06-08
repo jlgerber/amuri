@@ -19,3 +19,4 @@ pub mod errors;
 pub mod level;
 pub mod parse;
 pub mod scheme;
+pub mod version;
