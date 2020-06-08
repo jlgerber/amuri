@@ -1,4 +1,6 @@
+use crate::scheme::Scheme;
 use nom::{branch::alt, bytes::complete::tag, sequence::terminated, IResult};
+use std::str::FromStr;
 
 /// Parse the scheme for the set of asset manager routes
 pub fn scheme_parser(input: &str) -> IResult<&str, &str> {
@@ -8,6 +10,13 @@ pub fn scheme_parser(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
+/// Generate a Scheme instance from an input string
+pub fn parse_scheme(input: &str) -> IResult<&str, Scheme> {
+    let (i, r) = scheme_parser(input)?;
+    // should be able to unwrap here because we have successfully parsed
+    // the scheme
+    Ok((i, Scheme::from_str(r).unwrap()))
+}
 #[cfg(test)]
 mod tests {
     use super::*;
