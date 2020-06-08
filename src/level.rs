@@ -141,8 +141,8 @@ mod tests {
     use super::*;
     mod level {
         use super::*;
-        use nom::error::ErrorKind;
-        use nom::Err::Error;
+        // use nom::error::ErrorKind;
+        // use nom::Err::Error;
         #[test]
         fn can_construct_shot_from_str() {
             let level = Level::from_str("dev02.rd.9999");
