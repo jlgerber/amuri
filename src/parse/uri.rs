@@ -21,17 +21,19 @@ pub fn parse_uri(input: &str) -> Result<AssetModel, crate::errors::AmuriError> {
             parse_department,
             parse_subcontext,
             parse_snapshot_type,
-            parse_query,
+            opt(parse_query),
             opt(parse_hashtag),
         )))(input)
         .map_err(|err| AmuriError::UriParsingError {
             cause: format!("{:?}", err),
         })?;
     let mut version = None;
-    for querypair in query {
-        if querypair.key == "version" {
-            version = Some(Version::from_str(querypair.value)?);
-            break;
+    if query.is_some() {
+        for querypair in query.unwrap() {
+            if querypair.key == "version" {
+                version = Some(Version::from_str(querypair.value)?);
+                break;
+            }
         }
     }
     Ok(AssetModel::new(
@@ -43,7 +45,7 @@ pub fn parse_uri(input: &str) -> Result<AssetModel, crate::errors::AmuriError> {
 mod tests {
     use super::*;
     #[test]
-    fn can_parse_uri() {
+    fn can_parse_asset_uri_with_version_and_key() {
         let uri = parse_uri("asset://dev01/bob/model/hi/maya_model?version=current#main");
         let expect = AssetModel::from_strs(
             "asset",
@@ -54,6 +56,38 @@ mod tests {
             "maya_model",
             Some("current"),
             Some("main"),
+        );
+        assert_eq!(uri, expect);
+    }
+
+    #[test]
+    fn can_parse_asset_uri_with_version_no_key() {
+        let uri = parse_uri("asset://dev01/bob/model/hi/maya_model?version=current");
+        let expect = AssetModel::from_strs(
+            "asset",
+            "dev01",
+            "bob",
+            "model",
+            "hi",
+            "maya_model",
+            Some("current"),
+            None,
+        );
+        assert_eq!(uri, expect);
+    }
+
+    #[test]
+    fn can_parse_asset_uri_with_no_version_no_key() {
+        let uri = parse_uri("asset://dev01/bob/model/hi/maya_model");
+        let expect = AssetModel::from_strs(
+            "asset",
+            "dev01",
+            "bob",
+            "model",
+            "hi",
+            "maya_model",
+            None,
+            None,
         );
         assert_eq!(uri, expect);
     }
