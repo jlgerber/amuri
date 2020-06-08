@@ -91,4 +91,12 @@ mod tests {
         );
         assert_eq!(uri, expect);
     }
+    #[test]
+    fn can_handle_bad_scheme() {
+        let uri = parse_uri("assetf://dev01/bob/model/hi/maya_model");
+        let expect = Err(AmuriError::UriParsingError {
+            cause: "Error((\"f://dev01/bob/model/hi/maya_model\", Tag))".to_string(),
+        });
+        assert_eq!(uri, expect);
+    }
 }
