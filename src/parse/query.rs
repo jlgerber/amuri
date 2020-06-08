@@ -1,5 +1,6 @@
 use crate::parse::resource::parse_resource;
 use nom::bytes::complete::tag;
+use nom::character::complete::alphanumeric1;
 use nom::multi::many0;
 use nom::sequence::preceded;
 use nom::IResult;
@@ -32,13 +33,13 @@ impl<'a> From<QueryPair<'a>> for OwnedQueryPair {
 
 pub fn parse_and<'a>(input: &'a str) -> IResult<&'a str, QueryPair<'a>> {
     let (i, key) = preceded(tag("&"), parse_resource)(input)?;
-    let (i, value) = preceded(tag("="), parse_resource)(i)?;
+    let (i, value) = preceded(tag("="), alphanumeric1)(i)?;
     Ok((i, QueryPair::from(key, value)))
 }
 
 pub fn parse_query<'a>(input: &'a str) -> IResult<&'a str, Vec<QueryPair<'a>>> {
     let (i, key) = preceded(tag("?"), parse_resource)(input)?;
-    let (i, value) = preceded(tag("="), parse_resource)(i)?;
+    let (i, value) = preceded(tag("="), alphanumeric1)(i)?;
     let (i, mut pairs) = many0(parse_and)(i)?;
     let mut rval: Vec<QueryPair> = Vec::with_capacity(pairs.len() + 1);
     rval.push(QueryPair::from(key, value));
