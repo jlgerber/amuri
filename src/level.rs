@@ -2,8 +2,9 @@
 //!
 //! The level comes in two flavors: owned and non-owned
 //! It is not clear yet which i will use.
+use crate::errors::AmuriError;
 use crate::parse;
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
 pub enum Level<'a> {
     Show(&'a str),
     Sequence {
@@ -44,10 +45,9 @@ impl<'a> Level<'a> {
 
     /// parse level from str.
     // Note: I did not use the trait due to lifetime conflicts with trait
-    pub fn from_str(
-        input: &'a str,
-    ) -> std::result::Result<Self, nom::Err<(&'a str, nom::error::ErrorKind)>> {
-        let (_, result) = parse::level::parse_level(input)?;
+    pub fn from_str(input: &'a str) -> std::result::Result<Self, AmuriError> {
+        let (_, result) = parse::level::parse_level_noslash(input)
+            .map_err(|_e| AmuriError::LevelParsingFailure(input.into()))?;
         Ok(result)
     }
 
@@ -64,8 +64,20 @@ impl<'a> Level<'a> {
         }
     }
 }
-
-#[derive(Debug, PartialOrd, Ord, PartialEq, Eq)]
+impl<'a> From<Level<'a>> for OwnedLevel {
+    fn from(input: Level<'a>) -> Self {
+        match input {
+            Level::Show(show) => OwnedLevel::show(show),
+            Level::Sequence { show, sequence } => OwnedLevel::seq(show, sequence),
+            Level::Shot {
+                show,
+                sequence,
+                shot,
+            } => OwnedLevel::shot(show, sequence, shot),
+        }
+    }
+}
+#[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
 pub enum OwnedLevel {
     Show(String),
     Sequence {
@@ -149,7 +161,10 @@ mod tests {
         #[test]
         fn from_str_will_fail_with_invalid_input() {
             let level = Level::from_str("_dev02.rd.9999");
-            assert_eq!(level, Err(Error(("_dev02.rd.9999", ErrorKind::Alpha))));
+            assert_eq!(
+                level,
+                Err(AmuriError::LevelParsingFailure("_dev02.rd.9999".into()))
+            );
         }
         #[test]
         fn can_convert_shot_level_to_ownedlevel() {
