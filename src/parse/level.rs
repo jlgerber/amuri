@@ -11,8 +11,28 @@ use crate::parse::resource::parse_resource;
 use crate::parse::utils::*;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
-use nom::sequence::{preceded, separated_pair};
+use nom::sequence::{preceded, separated_pair, terminated};
 use nom::{character, error::ErrorKind, IResult};
+
+pub fn parse_level_item(input: &str) -> IResult<&str, &str> {
+    let (i, r1) = character::complete::alphanumeric1(input)?;
+    let (i, r2) = valid_body0_parser(i)?;
+    if r2.len() > 0 {
+        // This will be a bit slower, but will be utf8 compliant. We want a
+        // slice that is guaranteed to consist of the last character of the str.
+        // we need to figure out how big that last character is in utf8, and use
+        // that info to create the slice.
+        // This is probably overkill. TODO: look into whether a multibyte's
+        // utf8 char's last byte could equal 0x5f and thus yield a false positive.
+        // If not, then we can just index into the str slice directly and skip the following
+        // line:
+        let last_char_sz = r2.chars().last().unwrap().len_utf8();
+        let (_, _) = character::complete::none_of::<_, _, (&str, ErrorKind)>("_")(
+            &r2[r2.len() - last_char_sz..],
+        )?;
+    }
+    Ok((i, &input[0..r1.len() + r2.len()]))
+}
 
 /// given a valid show string, return a show and whatever is left over
 pub fn parse_show(input: &str) -> IResult<&str, Level> {
@@ -36,33 +56,16 @@ pub fn parse_shot(input: &str) -> IResult<&str, Level> {
     Ok((i, Level::shot(sh, seq, shot)))
 }
 
-pub fn parse_level_item(input: &str) -> IResult<&str, &str> {
-    let (i, r1) = character::complete::alphanumeric1(input)?;
-    let (i, r2) = valid_body0_parser(i)?;
-    if r2.len() > 0 {
-        // This will be a bit slower, but will be utf8 compliant. We want a
-        // slice that is guaranteed to consist of the last character of the str.
-        // we need to figure out how big that last character is in utf8, and use
-        // that info to create the slice.
-        // This is probably overkill. TODO: look into whether a multibyte's
-        // utf8 char's last byte could equal 0x5f and thus yield a false positive.
-        // If not, then we can just index into the str slice directly and skip the following
-        // line:
-        let last_char_sz = r2.chars().last().unwrap().len_utf8();
-        let (_, _) = character::complete::none_of::<_, _, (&str, ErrorKind)>("_")(
-            &r2[r2.len() - last_char_sz..],
-        )?;
-    }
-    Ok((i, &input[0..r1.len() + r2.len()]))
-}
 /// Parse a simplified levelspec string, which may be show, show.seq, or show.seq.shot
 pub fn parse_level(input: &str) -> IResult<&str, Level> {
-    alt((parse_shot, parse_seq, parse_show))(input)
+    terminated(alt((parse_shot, parse_seq, parse_show)), tag("/"))(input)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nom::error::ErrorKind;
+    use nom::Err::Error;
     mod parse_show {
         use super::*;
         #[test]
@@ -143,7 +146,7 @@ mod tests {
         fn can_parse_level_from_shot() {
             // shot
             assert_eq!(
-                parse_level("dev01.rd.9999"),
+                parse_level("dev01.rd.9999/"),
                 Ok(("", Level::shot("dev01", "rd", "9999")))
             );
         }
@@ -151,26 +154,26 @@ mod tests {
         fn can_parse_level_from_shot_up_to_slash() {
             assert_eq!(
                 parse_level("dev01.rd.9999/"),
-                Ok(("/", Level::shot("dev01", "rd", "9999")))
+                Ok(("", Level::shot("dev01", "rd", "9999")))
             );
         }
         #[test]
         fn can_parse_level_from_seq_up_to_slash() {
             assert_eq!(
                 parse_level("dev01.rd/"),
-                Ok(("/", Level::seq("dev01", "rd")))
+                Ok(("", Level::seq("dev01", "rd")))
             );
         }
         #[test]
         fn can_parse_level_from_show_up_to_slash() {
-            assert_eq!(parse_level("dev01/"), Ok(("/", Level::show("dev01"))));
+            assert_eq!(parse_level("dev01/"), Ok(("", Level::show("dev01"))));
             // what happens if we throw in a non-supported char?
         }
         #[test]
         fn can_parse_level_from_seq_up_to_space() {
             assert_eq!(
                 parse_level("dev01 .rd/"),
-                Ok((" .rd/", Level::show("dev01")))
+                Err(Error((" .rd/", ErrorKind::Tag)))
             );
         }
     }
