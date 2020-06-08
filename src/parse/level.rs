@@ -61,6 +61,11 @@ pub fn parse_level(input: &str) -> IResult<&str, Level> {
     terminated(alt((parse_shot, parse_seq, parse_show)), tag("/"))(input)
 }
 
+/// Parse a simplified levelspec string, which may be show, show.seq, or show.seq.shot
+pub fn parse_level_noslash(input: &str) -> IResult<&str, Level> {
+    alt((parse_shot, parse_seq, parse_show))(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
