@@ -1,6 +1,6 @@
 use strum_macros::{AsRefStr, Display, EnumIter, EnumString, IntoStaticStr};
 
-#[derive(Debug, Display, PartialEq, Eq, AsRefStr, EnumString, EnumIter, IntoStaticStr)]
+#[derive(Debug, Display, PartialEq, Eq, AsRefStr, EnumString, EnumIter, IntoStaticStr, Clone)]
 #[strum(serialize_all = "snake_case")]
 pub enum Scheme {
     Asset,
