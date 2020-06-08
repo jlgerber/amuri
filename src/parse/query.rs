@@ -5,8 +5,8 @@ use nom::sequence::preceded;
 use nom::IResult;
 #[derive(Debug, PartialEq, Eq)]
 pub struct QueryPair<'a> {
-    key: &'a str,
-    value: &'a str,
+    pub key: &'a str,
+    pub value: &'a str,
 }
 
 impl<'a> QueryPair<'a> {
@@ -17,8 +17,8 @@ impl<'a> QueryPair<'a> {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct OwnedQueryPair {
-    key: String,
-    value: String,
+    pub key: String,
+    pub value: String,
 }
 
 impl<'a> From<QueryPair<'a>> for OwnedQueryPair {
