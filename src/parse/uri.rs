@@ -9,7 +9,10 @@ use crate::parse::{
 };
 use crate::version::Version;
 use nom::combinator::{all_consuming, opt};
+use nom::error::ErrorKind;
 use nom::sequence::tuple;
+use nom::Err::Error;
+
 /// parse hashtag from str, which should generally take the form
 /// ```#key```
 pub fn parse_uri(input: &str) -> Result<AssetModel, crate::errors::AmuriError> {
@@ -24,9 +27,32 @@ pub fn parse_uri(input: &str) -> Result<AssetModel, crate::errors::AmuriError> {
             opt(parse_query),
             opt(parse_hashtag),
         )))(input)
-        .map_err(|err| AmuriError::UriParsingError {
-            cause: format!("{:?}", err),
+        .map_err(|err| match err {
+            Error((errstr, ErrorKind::Alpha)) if errstr.len() > 0 => {
+                let err_char = errstr.chars().next();
+                let problem = match err_char {
+                    Some(s) => s.to_string(),
+                    None => "".into(),
+                };
+                let location = &input[..(input.len() - errstr.len() + problem.len())];
+                AmuriError::UriNonAlphaParsingError {
+                    problem,
+                    location: location.into(),
+                }
+            }
+            Error((errstr, ErrorKind::Verify)) if errstr.len() > 0 => {
+                let processed = &input[..(input.len() - errstr.len())];
+                AmuriError::UriUnexpectedUnderscoreParsingError {
+                    processed: processed.into(),
+                    remaining: errstr.into(),
+                }
+            }
+            //
+            _ => AmuriError::UriParsingError {
+                cause: format!("{:?}", err),
+            },
         })?;
+
     let mut version = None;
     if query.is_some() {
         for querypair in query.unwrap() {

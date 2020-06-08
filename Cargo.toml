@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["jlgerber <jlgerber@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name="amu"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -11,3 +14,4 @@ nom = "5.1.1"
 strum = "0.18.0"
 strum_macros = "0.18.0"
 thiserror = "1.0.19"
+structopt = "0.3.14"
