@@ -4,6 +4,7 @@ use nom::character::complete::alphanumeric1;
 use nom::multi::many0;
 use nom::sequence::preceded;
 use nom::IResult;
+/// Key value pair in query part of uri
 #[derive(Debug, PartialEq, Eq)]
 pub struct QueryPair<'a> {
     pub key: &'a str,
@@ -11,7 +12,7 @@ pub struct QueryPair<'a> {
 }
 
 impl<'a> QueryPair<'a> {
-    pub fn from(key: &'a str, value: &'a str) -> Self {
+    pub fn new(key: &'a str, value: &'a str) -> Self {
         Self { key, value }
     }
 }
@@ -34,7 +35,7 @@ impl<'a> From<QueryPair<'a>> for OwnedQueryPair {
 pub fn parse_and<'a>(input: &'a str) -> IResult<&'a str, QueryPair<'a>> {
     let (i, key) = preceded(tag("&"), parse_resource)(input)?;
     let (i, value) = preceded(tag("="), alphanumeric1)(i)?;
-    Ok((i, QueryPair::from(key, value)))
+    Ok((i, QueryPair::new(key, value)))
 }
 
 pub fn parse_query<'a>(input: &'a str) -> IResult<&'a str, Vec<QueryPair<'a>>> {
@@ -42,7 +43,7 @@ pub fn parse_query<'a>(input: &'a str) -> IResult<&'a str, Vec<QueryPair<'a>>> {
     let (i, value) = preceded(tag("="), alphanumeric1)(i)?;
     let (i, mut pairs) = many0(parse_and)(i)?;
     let mut rval: Vec<QueryPair> = Vec::with_capacity(pairs.len() + 1);
-    rval.push(QueryPair::from(key, value));
+    rval.push(QueryPair::new(key, value));
     rval.append(&mut pairs);
     Ok((i, rval))
 }
@@ -57,7 +58,7 @@ mod tests {
         fn can_parse_query() {
             assert_eq!(
                 parse_query("?version=current"),
-                Ok(("", vec![QueryPair::from("version", "current")]))
+                Ok(("", vec![QueryPair::new("version", "current")]))
             )
         }
         #[test]
@@ -67,8 +68,8 @@ mod tests {
                 Ok((
                     "",
                     vec![
-                        QueryPair::from("version", "current"),
-                        QueryPair::from("server", "organic")
+                        QueryPair::new("version", "current"),
+                        QueryPair::new("server", "organic")
                     ]
                 ))
             )
@@ -81,7 +82,7 @@ mod tests {
         fn can_parse_and() {
             assert_eq!(
                 parse_and("&version=current"),
-                Ok(("", QueryPair::from("version", "current")))
+                Ok(("", QueryPair::new("version", "current")))
             )
         }
     }
