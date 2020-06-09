@@ -21,3 +21,11 @@ For example:
 asset://dev01/testcube/model/hi/alembic_model?version=current#main
 instance://dev01.rd.9999/testcube1/anim/hi/alembic_cache?version=1#main
 ```
+## Examples
+```bash
+
+./amu "asset://ORG3TEST4/testcube/model/md/fbx_model?version=2#main"
+
+amu "instance://ORG3TEST4/testcube1/anim/md/vrayproxy_anim?version=3#main"
+
+```
