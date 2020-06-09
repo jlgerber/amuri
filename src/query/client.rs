@@ -61,7 +61,7 @@ impl Client {
     /// Retrieve the path
     pub fn get(&self, asset_model: AssetModel) -> Result<String, AmuriError> {
         let (show, level) = match asset_model.level {
-            Level::Show(show) => (show, "".to_string()),
+            Level::Show(show) => (show, "+level:None".to_string()), //(show, "".to_string()),
             Level::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
             Level::Shot {
                 show,
