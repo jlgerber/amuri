@@ -62,12 +62,12 @@ impl Client {
     pub fn get(&self, asset_model: AssetModel) -> Result<String, AmuriError> {
         let (show, level) = match asset_model.level {
             Level::Show(show) => (show, "".to_string()),
-            Level::Sequence { show, sequence } => (show, format!("+sequence:{}", sequence)),
+            Level::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
             Level::Shot {
                 show,
                 sequence,
                 shot,
-            } => (show, format!("+shot:{}{}", sequence, shot)),
+            } => (show, format!("+level:{}{}", sequence, shot)),
         };
 
         let name = match asset_model.container_type {
