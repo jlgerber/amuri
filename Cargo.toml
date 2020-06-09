@@ -15,3 +15,8 @@ strum = "0.18.0"
 strum_macros = "0.18.0"
 thiserror = "1.0.19"
 structopt = "0.3.14"
+serde = {version="1.0.111",  features = ["derive"] }
+
+[dependencies.reqwest]
+version = "0.10.6"
+features = ["json", "blocking"]

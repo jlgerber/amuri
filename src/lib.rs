@@ -15,8 +15,10 @@
 //! valid name, dept, subcontext, type:
 //! char (a-z|0-9_)+
 pub mod assetmodel;
+pub mod constants;
 pub mod errors;
 pub mod level;
 pub mod parse;
+pub mod query;
 pub mod scheme;
 pub mod version;

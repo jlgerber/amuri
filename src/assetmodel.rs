@@ -6,15 +6,15 @@ use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AssetModel<'a> {
-    container_type: Scheme,
-    level: Level<'a>,
-    name: &'a str,
-    department: &'a str,
-    subcontext: &'a str,
-    snapshot_type: &'a str,
-    version: Option<Version>,
+    pub container_type: Scheme,
+    pub level: Level<'a>,
+    pub name: &'a str,
+    pub department: &'a str,
+    pub subcontext: &'a str,
+    pub snapshot_type: &'a str,
+    pub version: Option<Version>,
     /// The particular filetype we are interested in
-    key: Option<&'a str>,
+    pub key: Option<&'a str>,
 }
 
 impl<'a> AssetModel<'a> {
@@ -73,15 +73,15 @@ impl<'a> AssetModel<'a> {
 /// Represents the query
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct OwnedAssetModel {
-    container_type: Scheme,
-    level: OwnedLevel,
-    name: String,
-    department: String,
-    subcontext: String,
-    snapshot_type: String,
-    version: Option<Version>,
+    pub container_type: Scheme,
+    pub level: OwnedLevel,
+    pub name: String,
+    pub department: String,
+    pub subcontext: String,
+    pub snapshot_type: String,
+    pub version: Option<Version>,
     /// The particular filetype we are interested in
-    key: Option<String>,
+    pub key: Option<String>,
 }
 
 impl<'a> From<AssetModel<'a>> for OwnedAssetModel {

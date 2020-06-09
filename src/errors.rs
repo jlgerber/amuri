@@ -20,4 +20,12 @@ pub enum AmuriError {
         processed: String,
         remaining: String,
     },
+    #[error("request failed: Route: {route}, error: {error}")]
+    ReqwestError { route: String, error: String },
+    #[error("request failed to deserialize response to json: Route: {route}, error: {error}")]
+    ReqwestJsonError { route: String, error: String },
+    #[error("Response missing key: {0}")]
+    ReqwestResponseMissingKeyError(String),
+    #[error("Empty response")]
+    EmptyResponseError,
 }
