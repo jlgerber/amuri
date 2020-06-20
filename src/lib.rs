@@ -22,3 +22,4 @@ pub mod parse;
 pub mod query;
 pub mod scheme;
 pub mod version;
+pub mod traits;

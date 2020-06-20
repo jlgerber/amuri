@@ -1,5 +1,5 @@
 use crate::errors::AmuriError;
-use crate::level::{Level, OwnedLevel};
+use crate::level::{Level, LevelOwned};
 use crate::scheme::Scheme;
 use crate::version::Version;
 use std::str::FromStr;
@@ -72,9 +72,9 @@ impl<'a> AssetModel<'a> {
 }
 /// Represents the query
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct OwnedAssetModel {
+pub struct AssetModelOwned {
     pub container_type: Scheme,
-    pub level: OwnedLevel,
+    pub level: LevelOwned,
     pub name: String,
     pub department: String,
     pub subcontext: String,
@@ -84,7 +84,7 @@ pub struct OwnedAssetModel {
     pub key: Option<String>,
 }
 
-impl<'a> From<AssetModel<'a>> for OwnedAssetModel {
+impl<'a> From<AssetModel<'a>> for AssetModelOwned {
     fn from(input: AssetModel<'a>) -> Self {
         Self {
             container_type: input.container_type.clone(),

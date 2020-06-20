@@ -1,9 +1,10 @@
-use crate::assetmodel::AssetModel;
+use crate::assetmodel::AssetModelOwned;
 use crate::constants::*;
 use crate::errors::AmuriError;
-use crate::level::Level;
+use crate::level::LevelOwned;
 use crate::scheme::Scheme;
 use crate::version::Version;
+use crate::traits::Retriever;
 use serde::Deserialize;
 
 use reqwest::blocking;
@@ -26,6 +27,78 @@ pub struct Client {
     api_version: u32,
 }
 
+
+impl Retriever for Client {
+    type AssetModelType = AssetModelOwned;
+    type ErrorType = AmuriError;
+
+    fn get(&self, asset_model: &Self::AssetModelType) -> Result<String, Self::ErrorType> {
+
+        let (show, level) = match &asset_model.level {
+            LevelOwned::Show(show) => (show, "+level:None".to_string()), //(show, "".to_string()),
+            LevelOwned::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
+            LevelOwned::Shot {
+                show,
+                sequence,
+                shot,
+            } => (show, format!("+level:{}{}", sequence, shot)),
+        };
+
+        let name = match asset_model.container_type {
+            Scheme::Asset => "name",
+            Scheme::Instance => "instance_name",
+            Scheme::Render => "render_name",
+            Scheme::Plate => "plate_name",
+        };
+
+        // can probably get rid of this extra allocation by being a bit more clever in forming
+        // the route next
+        let version = match asset_model.version.as_ref().unwrap_or(&Version::Current) {
+            Version::Current => "is_current:true".into(),
+            Version::Latest => "is_latest:true".into(),
+            Version::Number(num) => format!("version:{}", num),
+        };
+
+        //todo: context type
+        let route = format!(
+            "{}snapshots?project={}&query={}:{}{}+department:{}+subcontext:{}+snapshot_type:{}+{}&fields=files",
+            self.baseroute(),
+            show,
+            name,
+            asset_model.name,
+            level,
+            asset_model.department,
+            asset_model.subcontext,
+            asset_model.snapshot_type,
+            version,
+        ); 
+
+        let json: Vec<Files> = blocking::get(&route)
+            .map_err(|e| AmuriError::ReqwestError {
+                route: route.clone(),
+                error: format!("{:?}", e),
+            })?
+            .json()
+            .map_err(|e| AmuriError::ReqwestJsonError {
+                route: route.clone(),
+                error: format!("{:?}", e),
+            })?;
+        
+        let main= String::from("main");
+        let key = asset_model.key.as_ref().unwrap_or(&main);
+        if json.len() == 0 {
+            return Err(AmuriError::EmptyResponseError);
+        }
+
+        for file in &json[0].files {
+            if &file.file_type == key {
+                return Ok(file.source_path.clone());
+            }
+        }
+        Err(AmuriError::ReqwestResponseMissingKeyError(key.clone()))
+    }
+    
+}
 impl Client {
     pub fn new<I: Into<String>>(server: I, port: u32, api_version: u32) -> Self {
         Self {
@@ -57,13 +130,13 @@ impl Client {
             self.server, self.port, self.api_version
         )
     }
-
+    /*
     /// Retrieve the path
     pub fn get(&self, asset_model: AssetModel) -> Result<String, AmuriError> {
         let (show, level) = match asset_model.level {
-            Level::Show(show) => (show, "+level:None".to_string()), //(show, "".to_string()),
-            Level::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
-            Level::Shot {
+            LevelOwned::Show(show) => (show, "+level:None".to_string()), //(show, "".to_string()),
+            LevelOwned::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
+            LevelOwned::Shot {
                 show,
                 sequence,
                 shot,
@@ -122,4 +195,5 @@ impl Client {
         }
         Err(AmuriError::ReqwestResponseMissingKeyError(key.into()))
     }
+    */
 }

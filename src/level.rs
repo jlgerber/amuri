@@ -51,34 +51,34 @@ impl<'a> Level<'a> {
         Ok(result)
     }
 
-    /// Create an OwnedLevel from a level
-    pub fn to_owned(&self) -> OwnedLevel {
+    /// Create an LevelOwned from a level
+    pub fn to_owned(&self) -> LevelOwned {
         match self {
-            Self::Show(show) => OwnedLevel::show(*show),
-            Self::Sequence { show, sequence } => OwnedLevel::seq(*show, *sequence),
+            Self::Show(show) => LevelOwned::show(*show),
+            Self::Sequence { show, sequence } => LevelOwned::seq(*show, *sequence),
             Self::Shot {
                 show,
                 sequence,
                 shot,
-            } => OwnedLevel::shot(*show, *sequence, *shot),
+            } => LevelOwned::shot(*show, *sequence, *shot),
         }
     }
 }
-impl<'a> From<Level<'a>> for OwnedLevel {
+impl<'a> From<Level<'a>> for LevelOwned {
     fn from(input: Level<'a>) -> Self {
         match input {
-            Level::Show(show) => OwnedLevel::show(show),
-            Level::Sequence { show, sequence } => OwnedLevel::seq(show, sequence),
+            Level::Show(show) => LevelOwned::show(show),
+            Level::Sequence { show, sequence } => LevelOwned::seq(show, sequence),
             Level::Shot {
                 show,
                 sequence,
                 shot,
-            } => OwnedLevel::shot(show, sequence, shot),
+            } => LevelOwned::shot(show, sequence, shot),
         }
     }
 }
 #[derive(Debug, PartialOrd, Ord, PartialEq, Eq, Clone)]
-pub enum OwnedLevel {
+pub enum LevelOwned {
     Show(String),
     Sequence {
         show: String,
@@ -91,15 +91,15 @@ pub enum OwnedLevel {
     },
 }
 
-impl OwnedLevel {
+impl LevelOwned {
     /// Show constructor function
     pub fn show<I: Into<String>>(name: I) -> Self {
-        OwnedLevel::Show(name.into())
+        LevelOwned::Show(name.into())
     }
 
     /// Seq constructor function
     pub fn seq<I: Into<String>>(show: I, sequence: I) -> Self {
-        OwnedLevel::Sequence {
+        LevelOwned::Sequence {
             show: show.into(),
             sequence: sequence.into(),
         }
@@ -107,7 +107,7 @@ impl OwnedLevel {
 
     /// Sequence constructor function
     pub fn sequence<I: Into<String>>(show: I, sequence: I) -> Self {
-        OwnedLevel::Sequence {
+        LevelOwned::Sequence {
             show: show.into(),
             sequence: sequence.into(),
         }
@@ -115,7 +115,7 @@ impl OwnedLevel {
 
     /// Shot constructor function
     pub fn shot<I: Into<String>>(show: I, sequence: I, shot: I) -> Self {
-        OwnedLevel::Shot {
+        LevelOwned::Shot {
             show: show.into(),
             sequence: sequence.into(),
             shot: shot.into(),
@@ -170,19 +170,19 @@ mod tests {
         fn can_convert_shot_level_to_ownedlevel() {
             let level = Level::from_str("dev02.rd.9999").unwrap();
             let owned = level.to_owned();
-            assert_eq!(owned, OwnedLevel::shot("dev02", "rd", "9999"));
+            assert_eq!(owned, LevelOwned::shot("dev02", "rd", "9999"));
         }
         #[test]
         fn can_convert_seq_level_to_ownedlevel() {
             let level = Level::from_str("dev02.rd").unwrap();
             let owned = level.to_owned();
-            assert_eq!(owned, OwnedLevel::seq("dev02", "rd"));
+            assert_eq!(owned, LevelOwned::seq("dev02", "rd"));
         }
         #[test]
         fn can_convert_show_level_to_ownedlevel() {
             let level = Level::from_str("dev02").unwrap();
             let owned = level.to_owned();
-            assert_eq!(owned, OwnedLevel::show("dev02"));
+            assert_eq!(owned, LevelOwned::show("dev02"));
         }
     }
 }
