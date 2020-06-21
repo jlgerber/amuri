@@ -54,7 +54,7 @@ fn get_next(path: &std::path::Path) -> Result<String, AmuriError> {
 }
 
 fn create_path(path: &std::path::Path) -> Result<(),AmuriError> {
-    println!("creating path {:?}",path);
+    //println!("creating path {:?}",path);
     std::fs::create_dir_all(path)?;
     Ok(())
 }
@@ -92,7 +92,7 @@ impl Retriever for Client {
         asset_path.push(&asset_model.subcontext);
         asset_path.push(&asset_model.snapshot_type);
 
-        println!("create missing? {:?}", asset_model.create_missing);
+        //println!("create missing? {:?}", asset_model.create_missing);
         // can probably get rid of this extra allocation by being a bit more clever in forming
         // the route next
         match asset_model.version.as_ref().unwrap_or(&Version::Current) {
