@@ -54,16 +54,19 @@ pub fn parse_uri(input: &str) -> Result<AssetModel, crate::errors::AmuriError> {
         })?;
 
     let mut version = None;
+    let mut create_missing = false;
     if query.is_some() {
         for querypair in query.unwrap() {
             if querypair.key == "version" {
                 version = Some(Version::from_str(querypair.value)?);
-                break;
+            }
+            if querypair.key == "create" {
+                create_missing = querypair.value.parse::<bool>().unwrap_or(false);
             }
         }
     }
     Ok(AssetModel::new(
-        scheme, level, name, dept, subcontext, snaptype, version, key,
+        scheme, level, name, dept, subcontext, snaptype, version, key, create_missing
     ))
 }
 
@@ -82,6 +85,7 @@ mod tests {
             "maya_model",
             Some("current"),
             Some("main"),
+            "false"
         );
         assert_eq!(uri, expect);
     }
@@ -97,6 +101,7 @@ mod tests {
             "maya_model",
             Some("1"),
             Some("main"),
+            "false"
         );
         assert_eq!(uri, expect);
     }
@@ -113,6 +118,7 @@ mod tests {
             "maya_model",
             Some("current"),
             None,
+            "false"
         );
         assert_eq!(uri, expect);
     }
@@ -129,6 +135,7 @@ mod tests {
             "maya_model",
             None,
             None,
+            "false"
         );
         assert_eq!(uri, expect);
     }

@@ -23,3 +23,4 @@ pub mod query;
 pub mod scheme;
 pub mod version;
 pub mod traits;
+pub mod snapshot_type;

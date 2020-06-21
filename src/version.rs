@@ -3,6 +3,7 @@ use crate::errors::AmuriError;
 pub enum Version {
     Current,
     Latest,
+    Next,
     Number(u16),
 }
 
@@ -12,6 +13,7 @@ impl Version {
         match input {
             "current" => Ok(Self::Current),
             "latest" => Ok(Self::Latest),
+            "next" => Ok(Self::Next),
             _ => {
                 let num: u16 = input.parse().map_err(|_x| AmuriError::StrToIntError {
                     target: input.into(),
@@ -35,6 +37,11 @@ mod tests {
         #[test]
         fn can_generate_version_from_str_latest() {
             assert_eq!(Version::from_str("latest"), Ok(Version::Latest));
+        }
+
+        #[test]
+        fn can_generate_version_from_str_next() {
+            assert_eq!(Version::from_str("next"), Ok(Version::Next));
         }
 
         #[test]

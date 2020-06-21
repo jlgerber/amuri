@@ -15,6 +15,7 @@ pub struct AssetModel<'a> {
     pub version: Option<Version>,
     /// The particular filetype we are interested in
     pub key: Option<&'a str>,
+    pub create_missing: bool
 }
 
 impl<'a> AssetModel<'a> {
@@ -27,6 +28,7 @@ impl<'a> AssetModel<'a> {
         snapshot_type: &'a str,
         version: Option<Version>,
         key: Option<&'a str>,
+        create_missing: bool
     ) -> Self {
         Self {
             container_type,
@@ -38,6 +40,7 @@ impl<'a> AssetModel<'a> {
             version,
             /// The particular filetype we are interested in
             key,
+            create_missing,
         }
     }
 
@@ -50,6 +53,7 @@ impl<'a> AssetModel<'a> {
         snapshot_type: &'a str,
         version: Option<&'a str>,
         key: Option<&'a str>,
+        create_missing: &'a str,
     ) -> std::result::Result<AssetModel<'a>, AmuriError> {
         let container_type = Scheme::from_str(container_type)?;
         let level = Level::from_str(level)?;
@@ -58,6 +62,9 @@ impl<'a> AssetModel<'a> {
         } else {
             None
         };
+        
+        let create_missing = if create_missing == "true" {true} else {false};
+
         Ok(AssetModel::new(
             container_type,
             level,
@@ -67,8 +74,14 @@ impl<'a> AssetModel<'a> {
             snapshot_type,
             version,
             key,
+            create_missing,
         ))
     }
+
+    pub fn to_owned(&self) -> AssetModelOwned {
+        AssetModelOwned::from(self)
+    }
+
 }
 /// Represents the query
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -82,6 +95,7 @@ pub struct AssetModelOwned {
     pub version: Option<Version>,
     /// The particular filetype we are interested in
     pub key: Option<String>,
+    pub create_missing: bool,
 }
 
 impl<'a> From<AssetModel<'a>> for AssetModelOwned {
@@ -95,6 +109,23 @@ impl<'a> From<AssetModel<'a>> for AssetModelOwned {
             snapshot_type: input.snapshot_type.into(),
             version: input.version.clone(),
             key: input.key.map(str::to_string),
+            create_missing: input.create_missing
+        }
+    }
+}
+
+impl<'a> From<&AssetModel<'a>> for AssetModelOwned {
+    fn from(input: &AssetModel<'a>) -> Self {
+        Self {
+            container_type: input.container_type.clone(),
+            level: input.level.to_owned(),
+            name: input.name.into(),
+            department: input.department.into(),
+            subcontext: input.subcontext.into(),
+            snapshot_type: input.snapshot_type.into(),
+            version: input.version.clone(),
+            key: input.key.map(str::to_string),
+            create_missing: input.create_missing
         }
     }
 }
@@ -113,6 +144,7 @@ mod tests {
             "alembic_model",
             Some("current"),
             Some("main"),
+            "false"
         );
         assert!(am.is_ok());
     }

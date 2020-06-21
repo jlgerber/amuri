@@ -1,13 +1,11 @@
 use crate::assetmodel::AssetModelOwned;
-use crate::constants::*;
 use crate::errors::AmuriError;
 use crate::level::LevelOwned;
-use crate::scheme::Scheme;
 use crate::version::Version;
 use crate::traits::Retriever;
 use serde::Deserialize;
+use crate::snapshot_type::STMAP;
 
-use reqwest::blocking;
 use std::env;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -22,178 +20,215 @@ pub struct Files {
 }
 
 pub struct Client {
-    server: String,
-    port: u32,
-    api_version: u32,
+    base_dir: String
 }
 
+
+fn get_latest(path: &std::path::Path) -> Result<String,AmuriError> {
+    if !path.exists() {
+        return Err(AmuriError::NonExtantPath(path.to_string_lossy().into_owned()));
+    }
+    
+    if !path.is_dir() {
+        return Err(AmuriError::NonExtantPath(path.to_string_lossy().into_owned()));
+    }
+    if path.read_dir().map_err(|e| AmuriError::IoError(e.to_string()))?.next().is_none() {
+        return Err(AmuriError::EmptyDirectory(path.to_string_lossy().into_owned()))
+    };
+    let mut latest = String::new();
+    for entry in std::fs::read_dir(&path).map_err(|e| AmuriError::IoError(e.to_string()))? {
+        let entry = entry.map_err(|e| AmuriError::IoError(e.to_string()))?;
+        let f_name = String::from(entry.file_name().to_string_lossy());
+        if f_name == "current" {continue;}
+        if f_name > latest {
+            latest = f_name;
+        }
+    }
+   return Ok(latest)
+}
+
+fn get_next(path: &std::path::Path) -> Result<String, AmuriError> {
+    let latest = get_latest(path)?.parse::<u16>().unwrap();
+    Ok(format!("{:04}", latest+1))
+
+}
+
+fn create_path(path: &std::path::Path) -> Result<(),AmuriError> {
+    std::fs::create_dir_all(path)?;
+    Ok(())
+}
 
 impl Retriever for Client {
     type AssetModelType = AssetModelOwned;
     type ErrorType = AmuriError;
 
     fn get(&self, asset_model: &Self::AssetModelType) -> Result<String, Self::ErrorType> {
+        
+        let mut asset_path = std::path::PathBuf::new();
+        asset_path.push(self.get_root());
 
-        let (show, level) = match &asset_model.level {
-            LevelOwned::Show(show) => (show, "+level:None".to_string()), //(show, "".to_string()),
-            LevelOwned::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
+        match &asset_model.level {
+            LevelOwned::Show(show) => asset_path.push(show),
+            LevelOwned::Sequence { show, sequence } => {
+                asset_path.push(show);
+                asset_path.push(sequence)
+            },
             LevelOwned::Shot {
                 show,
                 sequence,
                 shot,
-            } => (show, format!("+level:{}{}", sequence, shot)),
-        };
+            } => {
+                asset_path.push(show);
+                asset_path.push(sequence);
+                asset_path.push(shot);
+            },
+        }
 
-        let name = match asset_model.container_type {
-            Scheme::Asset => "name",
-            Scheme::Instance => "instance_name",
-            Scheme::Render => "render_name",
-            Scheme::Plate => "plate_name",
-        };
+        let extension = STMAP.get(&asset_model.snapshot_type).ok_or_else(|| AmuriError::UnknownSnapshotType(asset_model.snapshot_type.clone()))?;
+
+        asset_path.push(&asset_model.name);
+        asset_path.push(&asset_model.department);
+        asset_path.push(&asset_model.subcontext);
+        asset_path.push(&asset_model.snapshot_type);
 
         // can probably get rid of this extra allocation by being a bit more clever in forming
         // the route next
-        let version = match asset_model.version.as_ref().unwrap_or(&Version::Current) {
-            Version::Current => "is_current:true".into(),
-            Version::Latest => "is_latest:true".into(),
-            Version::Number(num) => format!("version:{}", num),
-        };
-
-        //todo: context type
-        let route = format!(
-            "{}snapshots?project={}&query={}:{}{}+department:{}+subcontext:{}+snapshot_type:{}+{}&fields=files",
-            self.baseroute(),
-            show,
-            name,
-            asset_model.name,
-            level,
-            asset_model.department,
-            asset_model.subcontext,
-            asset_model.snapshot_type,
-            version,
-        ); 
-
-        let json: Vec<Files> = blocking::get(&route)
-            .map_err(|e| AmuriError::ReqwestError {
-                route: route.clone(),
-                error: format!("{:?}", e),
-            })?
-            .json()
-            .map_err(|e| AmuriError::ReqwestJsonError {
-                route: route.clone(),
-                error: format!("{:?}", e),
-            })?;
-        
-        let main= String::from("main");
+        match asset_model.version.as_ref().unwrap_or(&Version::Current) {
+            Version::Current => asset_path.push("current"),
+            Version::Latest => {asset_path.push(get_latest(&asset_path)? )},
+            Version::Next => { 
+                let next_unchecked = get_next(&asset_path);
+                match  next_unchecked {
+                    Ok(c) => {
+                        asset_path.push(c);
+                        if asset_model.create_missing {
+                            create_path(&asset_path)?
+                        }
+                    },
+                    Err(AmuriError::NonExtantPath(_)) => {
+                        asset_path.push("0001".to_string());
+                        if asset_model.create_missing {
+                            create_path(&asset_path)?;
+                        }
+                    }
+                    Err(AmuriError::EmptyDirectory(_)) => {
+                        asset_path.push("0001".to_string());
+                        if asset_model.create_missing {
+                            create_path(&asset_path)?;
+                        }
+                    },
+                    _ => return next_unchecked,
+                }
+            },
+            Version::Number(num) => asset_path.push(format!("{:04}", num)),
+        }
+        let main = "main".to_string();
         let key = asset_model.key.as_ref().unwrap_or(&main);
-        if json.len() == 0 {
-            return Err(AmuriError::EmptyResponseError);
-        }
+        let filename = format!("{}.{}", &key, &extension);
+        asset_path.push(filename);
 
-        for file in &json[0].files {
-            if &file.file_type == key {
-                return Ok(file.source_path.clone());
-            }
-        }
-        Err(AmuriError::ReqwestResponseMissingKeyError(key.clone()))
+        Ok(asset_path.to_string_lossy().into_owned())
     }
     
 }
 impl Client {
-    pub fn new<I: Into<String>>(server: I, port: u32, api_version: u32) -> Self {
+    /// New up a client given the base directory
+    pub fn new<I: Into<String>>(base_dir: I) -> Self { 
         Self {
-            server: server.into(),
-            port,
-            api_version,
+            base_dir:  base_dir.into()  
         }
     }
-    /// Generate server from env or defaults
-    pub fn from_env() -> Self {
-        let server = env::var(SERVER_VAR).unwrap_or(DEFAULT_SERVER.into());
-        let port = env::var(PORT_VAR)
-            .map(|v| v.parse::<u32>().unwrap_or(DEFAULT_PORT))
-            .unwrap_or(DEFAULT_PORT);
-        let api_version = env::var(API_VAR)
-            .map(|v| v.parse::<u32>().unwrap_or(DEFAULT_API))
-            .unwrap_or(DEFAULT_API);
-        Self {
-            server,
-            port,
-            api_version,
-        }
+    /// Generate server from env var. This should be the preferred
+    /// way of instantiating the Client.
+    pub fn from_env() -> Result<Self, AmuriError> {
+        let root = env::var("AMURI_REPO_ROOT")?;
+        Ok(Self::new(root))
+    }
+    
+    /// Retrieve the base directory
+    pub fn get_root(&self) -> &str {
+        self.base_dir.as_ref()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::assetmodel::AssetModel;
+
+    fn setup() {
+        std::env::set_var("AMURI_REPO_ROOT", "/home/jgerber/src/rust/amuri/tests/data");
+    }
+    fn setup_tmp() {
+        std::env::set_var("AMURI_REPO_ROOT", "/tmp/amuri_tests");
     }
 
-    // construct a route from a relative path
-    fn baseroute(&self) -> String {
-        format!(
-            "http://{}:{}/api/v{}/",
-            self.server, self.port, self.api_version
-        )
+    #[test]
+    fn can_get_latest_fn() {
+        setup();
+        let path = std::path::Path::new("/home/jgerber/src/rust/amuri/tests/data/TESTSHOW/robot/model/hi/maya_model");
+        let latest = get_latest(&path);
+        assert_eq!(latest, Ok("0004".to_string())) ;  
     }
-    /*
-    /// Retrieve the path
-    pub fn get(&self, asset_model: AssetModel) -> Result<String, AmuriError> {
-        let (show, level) = match asset_model.level {
-            LevelOwned::Show(show) => (show, "+level:None".to_string()), //(show, "".to_string()),
-            LevelOwned::Sequence { show, sequence } => (show, format!("+level:{}", sequence)),
-            LevelOwned::Shot {
-                show,
-                sequence,
-                shot,
-            } => (show, format!("+level:{}{}", sequence, shot)),
-        };
 
-        let name = match asset_model.container_type {
-            Scheme::Asset => "name",
-            Scheme::Instance => "instance_name",
-            Scheme::Render => "render_name",
-            Scheme::Plate => "plate_name",
-        };
+    #[test]
+    fn can_get_latest_from_client() {
+        setup();
+        let asset_model = AssetModel::from_strs(
+            "asset", "TESTSHOW", "robot", "model", "hi", "maya_model", Some("latest"), Some("main"), "false"
+        ).unwrap();
 
-        // can probably get rid of this extra allocation by being a bit more clever in forming
-        // the route next
-        let version = match asset_model.version.unwrap_or(Version::Current) {
-            Version::Current => "is_current:true".into(),
-            Version::Latest => "is_latest:true".into(),
-            Version::Number(num) => format!("version:{}", num),
-        };
-
-        //todo: context type
-        let route = format!(
-            "{}snapshots?project={}&query={}:{}{}+department:{}+subcontext:{}+snapshot_type:{}+{}&fields=files",
-            self.baseroute(),
-            show,
-            name,
-            asset_model.name,
-            level,
-            asset_model.department,
-            asset_model.subcontext,
-            asset_model.snapshot_type,
-            version,
-        );
-
-        let json: Vec<Files> = blocking::get(&route)
-            .map_err(|e| AmuriError::ReqwestError {
-                route: route.clone(),
-                error: format!("{:?}", e),
-            })?
-            .json()
-            .map_err(|e| AmuriError::ReqwestJsonError {
-                route: route.clone(),
-                error: format!("{:?}", e),
-            })?;
-
-        let key = asset_model.key.unwrap_or("main");
-        if json.len() == 0 {
-            return Err(AmuriError::EmptyResponseError);
-        }
-
-        for file in &json[0].files {
-            if file.file_type == key {
-                return Ok(file.source_path.clone());
-            }
-        }
-        Err(AmuriError::ReqwestResponseMissingKeyError(key.into()))
+        let client = Client::from_env().unwrap();
+        let results = client.get(&asset_model.to_owned());
+        assert_eq!(results, Ok("/home/jgerber/src/rust/amuri/tests/data/TESTSHOW/robot/model/hi/maya_model/0004/main.mb".to_string())) ;  
     }
-    */
+
+    #[test]
+    fn can_get_next_from_client() {
+        setup();
+        let asset_model = AssetModel::from_strs(
+            "asset", "TESTSHOW", "robot", "model", "hi", "maya_model", Some("next"), Some("main"), "false"
+        ).unwrap();
+
+        let client = Client::from_env().unwrap();
+        let results = client.get(&asset_model.to_owned());
+        assert_eq!(results, Ok("/home/jgerber/src/rust/amuri/tests/data/TESTSHOW/robot/model/hi/maya_model/0005/main.mb".to_string())) ;  
+    }
+
+    #[test]
+    fn can_get_next_from_client_and_create_missing() {
+        setup_tmp();
+        let asset_model = AssetModel::from_strs(
+            "asset", "TESTSHOW", "robot", "model", "hi", "maya_model", Some("next"), Some("main"), "true"
+        ).unwrap();
+
+        let client = Client::from_env().unwrap();
+        let results = client.get(&asset_model.to_owned());
+        let expected = "/tmp/amuri_tests/TESTSHOW/robot/model/hi/maya_model/0001/main.mb";
+        assert_eq!(results, Ok(expected.to_string())) ;  
+        let expected_path = std::path::Path::new("/tmp/amuri_tests/TESTSHOW/robot/model/hi/maya_model/0001");
+        assert!(expected_path.exists());
+        assert!(std::fs::remove_dir_all("/tmp/amuri_tests").is_ok());
+    }
+
+
+    #[test]
+    fn can_get_version_from_client() {
+        setup();
+        let asset_model = AssetModel::from_strs(
+            "asset", "TESTSHOW", "robot", "model", "hi", "maya_model", Some("4"), Some("main"), "false"
+        ).unwrap();
+
+        let client = Client::from_env().unwrap();
+        let results = client.get(&asset_model.to_owned());
+        assert_eq!(results, Ok("/home/jgerber/src/rust/amuri/tests/data/TESTSHOW/robot/model/hi/maya_model/0004/main.mb".to_string())) ;  
+    }
+
+    #[test]
+    fn can_get_next_fn() {
+        setup();
+        let path = std::path::Path::new("/home/jgerber/src/rust/amuri/tests/data/TESTSHOW/robot/model/hi/maya_model");
+        let next = get_next(&path);
+        assert_eq!(next, Ok("0005".to_string())) ;  
+    }
 }
