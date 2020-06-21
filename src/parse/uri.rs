@@ -90,6 +90,22 @@ mod tests {
         assert_eq!(uri, expect);
     }
     #[test]
+    fn can_parse_asset_uri_with_version_and_key_and_create() {
+        let uri = parse_uri("asset://dev01/bob/model/hi/maya_model?version=current&create=true#main");
+        let expect = AssetModel::from_strs(
+            "asset",
+            "dev01",
+            "bob",
+            "model",
+            "hi",
+            "maya_model",
+            Some("current"),
+            Some("main"),
+            "true"
+        );
+        assert_eq!(uri, expect);
+    }
+    #[test]
     fn can_parse_asset_uri_with_num_version_and_key() {
         let uri = parse_uri("asset://dev01/bob/model/hi/maya_model?version=1#main");
         let expect = AssetModel::from_strs(

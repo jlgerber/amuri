@@ -5,7 +5,7 @@ use crate::version::Version;
 use crate::traits::Retriever;
 use serde::Deserialize;
 use crate::snapshot_type::STMAP;
-
+use crate::constants::REPO_ROOT_VAR;
 use std::env;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -141,7 +141,7 @@ impl Client {
     /// Generate server from env var. This should be the preferred
     /// way of instantiating the Client.
     pub fn from_env() -> Result<Self, AmuriError> {
-        let root = env::var("AMURI_REPO_ROOT")?;
+        let root = env::var(REPO_ROOT_VAR)?;
         Ok(Self::new(root))
     }
     
@@ -157,10 +157,10 @@ mod tests {
     use crate::assetmodel::AssetModel;
 
     fn setup() {
-        std::env::set_var("AMURI_REPO_ROOT", "/home/jgerber/src/rust/amuri/tests/data");
+        std::env::set_var(REPO_ROOT_VAR, "/home/jgerber/src/rust/amuri/tests/data");
     }
     fn setup_tmp() {
-        std::env::set_var("AMURI_REPO_ROOT", "/tmp/amuri_tests");
+        std::env::set_var(REPO_ROOT_VAR, "/tmp/amuri_tests");
     }
 
     #[test]
