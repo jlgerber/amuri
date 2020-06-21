@@ -54,6 +54,7 @@ fn get_next(path: &std::path::Path) -> Result<String, AmuriError> {
 }
 
 fn create_path(path: &std::path::Path) -> Result<(),AmuriError> {
+    println!("creating path {}".path);
     std::fs::create_dir_all(path)?;
     Ok(())
 }
